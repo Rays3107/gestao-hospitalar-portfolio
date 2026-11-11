@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gestão Hospitalar | Painel</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6fb;color:#1e293b;font-family:Segoe UI,Arial,sans-serif}
+header{background:#123b63;color:white;padding:22px 5%;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:21px;margin:0}header span{font-size:13px;color:#c9d9e9}
+main{max-width:1150px;margin:35px auto;padding:0 20px}
+h2{font-size:23px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:22px 0}
+.card,.panel{background:white;border-radius:13px;padding:22px;box-shadow:0 3px 14px #1725540b}
+.card small{color:#64748b}.number{font-size:29px;font-weight:700;margin-top:10px;color:#123b63}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+button{border:0;border-radius:8px;padding:11px 17px;background:#087e8b;color:white;font-weight:600;cursor:pointer}
+button:hover{opacity:.88}input,select{padding:11px;border:1px solid #cbd5e1;border-radius:8px;width:100%;margin:6px 0 14px}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+label{font-size:13px;font-weight:600;color:#475569}
+table{width:100%;border-collapse:collapse;margin-top:18px;font-size:14px}
+th,td{text-align:left;padding:13px 9px;border-bottom:1px solid #e8edf3}
+th{color:#64748b;font-size:12px;text-transform:uppercase}
+.panel{margin-top:20px;overflow-x:auto}.status{font-weight:600;color:#087e8b}
+#mensagem{margin:12px 0;color:#087e8b}
+@media(max-width:600px){header{align-items:flex-start;gap:8px;flex-direction:column}table{min-width:650px}}
+</style>
+</head>
+<body>
+<header><h1>Gestão Hospitalar</h1><span>Painel administrativo demonstrativo</span></header>
+<main>
+<h2>Visão geral</h2>
+<div class="cards">
+ <div class="card"><small>Total de orçamentos</small><div class="number" id="total">0</div></div>
+ <div class="card"><small>Valor total</small><div class="number" id="valor">R$ 0,00</div></div>
+ <div class="card"><small>Pendentes</small><div class="number" id="pendentes">0</div></div>
+ <div class="card"><small>Aprovados</small><div class="number" id="aprovados">0</div></div>
+</div>
+<section class="panel">
+<h2>Novo orçamento</h2>
+<form id="formulario">
+ <label>Número<input name="numero" required placeholder="ORC-001"></label>
+ <label>Paciente fictício<input name="paciente" required placeholder="Paciente demonstrativo"></label>
+ <label>Procedimento<input name="procedimento" required placeholder="Exame ou procedimento"></label>
+ <label>Valor (R$)<input name="valor" type="number" min="0.01" step="0.01" required></label>
+ <div><button type="submit">Cadastrar orçamento</button></div>
+</form>
+<div id="mensagem"></div>
+</section>
+<section class="panel">
+<div class="actions"><h2>Orçamentos cadastrados</h2><button onclick="carregar()">Atualizar dados</button></div>
+<table><thead><tr><th>Número</th><th>Paciente</th><th>Procedimento</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead>
+<tbody id="lista"></tbody></table>
+</section>
+</main>
+<script>
+const moeda=v=>Number(v).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+async function carregar(){
+ const [r,s]=await Promise.all([fetch("/api/orcamentos"),fetch("/api/resumo")]);
+ const itens=await r.json(), resumo=await s.json();
+ document.querySelector("#total").textContent=resumo.total;
+ document.querySelector("#valor").textContent=moeda(resumo.valor_total);
+ const cont={};resumo.status.forEach(x=>cont[x.status]=x.quantidade);
+ document.querySelector("#pendentes").textContent=cont.Pendente||0;
+ document.querySelector("#aprovados").textContent=cont.Aprovado||0;
+ document.querySelector("#lista").innerHTML=itens.map(x=>`
+ <tr><td>${x.numero}</td><td>${x.paciente}</td><td>${x.procedimento}</td>
+ <td>${moeda(x.valor)}</td><td class="status">${x.status}</td>
+ <td><select onchange="status(${x.id},this.value)">
+ <option ${x.status==="Pendente"?"selected":""}>Pendente</option>
+ <option ${x.status==="Aprovado"?"selected":""}>Aprovado</option>
+ <option ${x.status==="Recusado"?"selected":""}>Recusado</option>
+ </select></td></tr>`).join("");
+}
+async function status(id,valor){
+ const r=await fetch(`/api/orcamentos/${id}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:valor})});
+ if(!r.ok) alert("Não foi possível atualizar.");carregar();
+}
+document.querySelector("#formulario").addEventListener("submit",async e=>{
+ e.preventDefault();const dados=Object.fromEntries(new FormData(e.target));
+ const r=await fetch("/api/orcamentos",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(dados)});
+ const resposta=await r.json();document.querySelector("#mensagem").textContent=resposta.mensagem||resposta.erro;
+ if(r.ok){e.target.reset();carregar();}
+});
+carregar();
+</script>
+</body>
+</html>
