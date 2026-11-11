@@ -101,3 +101,8 @@ Aplicação demonstrativa. Utilize exclusivamente dados fictícios. Não insira 
 
 **Desenvolvido por Rayse Kawane**  
 GitHub: [@Rays3107](https://github.com/Rays3107)
+## 📸 Capturas de tela
+
+### Painel principal
+
+![Painel principal do sistema](screenshots/dashboard.png)
